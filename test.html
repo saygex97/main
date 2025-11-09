@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameZone</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      background-color: #0a0a0a;
+      color: #00ffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* căn giữa theo chiều dọc */
+      align-items: center;    /* căn giữa theo chiều ngang */
+      min-height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+
+    header h1 {
+      font-size: 3rem;
+      color: #00ffff;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #00ffff;
+      display: inline-block;
+      padding-bottom: 5px;
+    }
+
+    .hero {
+      width: 90%;
+      max-width: 800px;
+      background-color: #111111;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 0 25px #00ffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hero h2 {
+      font-size: 2rem;
+      margin-bottom: 15px;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      margin-bottom: 25px;
+    }
+
+    .hero button {
+      padding: 15px 30px;
+      font-size: 1rem;
+      border-radius: 15px;
+      border: none;
+      background-color: #00ffff;
+      color: #0a0a0a;
+      cursor: pointer;
+      transition: 0.3s;
+      font-weight: bold;
+    }
+
+    .hero button:hover {
+      background-color: #00bbbb;
+    }
+
+    footer {
+      margin-top: 30px;
+      color: #00bbbb;
+      text-align: center;
+    }
+
+    /* Responsive cho điện thoại */
+    @media (max-width: 768px) {
+      header h1 {
+        font-size: 2rem;
+      }
+
+      .hero {
+        padding: 25px;
+      }
+
+      .hero h2 {
+        font-size: 1.5rem;
+      }
+
+      .hero p {
+        font-size: 1rem;
+      }
+
+      .hero button {
+        padding: 12px 25px;
+        font-size: 0.95rem;
+      }
+    }
+
+    /* Responsive cho TV hoặc màn hình lớn */
+    @media (min-width: 1920px) {
+      header h1 {
+        font-size: 5rem;
+      }
+
+      .hero {
+        padding: 60px;
+        max-width: 1200px;
+      }
+
+      .hero h2 {
+        font-size: 3rem;
+      }
+
+      .hero p {
+        font-size: 1.5rem;
+      }
+
+      .hero button {
+        padding: 20px 40px;
+        font-size: 1.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GameZone</h1>
+  </header>
+
+  <section class="hero">
+    <h2>Chào mừng đến với GameZone!</h2>
+    <p>Khám phá những trò chơi hấp dẫn và thử thách bản thân với các bảng xếp hạng!</p>
+    <!-- Nút chuyển sang menu.html -->
+    <button onclick="window.location.href='menu.html'">Khám Phá Ngay</button>
+  </section>
+
+  <footer>
+    &copy; 2025 GameZone. All rights reserved.
+  </footer>
+</body>
+</html>
