@@ -12,23 +12,39 @@
       font-family: 'Arial', sans-serif;
     }
 
-    body {
+    body, html {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
       background-color: #0a0a0a;
-      color: #00ffff;
+      color: #ff3333; /* tông đỏ */
+      text-align: center;
+      position: relative;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 0; /* canvas nền */
+    }
+
+    .content {
+      position: relative;
+      z-index: 1; /* nằm trên canvas */
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      text-align: center;
       padding: 20px;
     }
 
     header h1 {
       font-size: 3rem;
-      color: #00ffff;
+      color: #ff3333;
       margin-bottom: 30px;
-      border-bottom: 2px solid #00ffff;
+      border-bottom: 2px solid #ff3333;
       display: inline-block;
       padding-bottom: 5px;
     }
@@ -47,15 +63,16 @@
       border-radius: 20px;
       padding: 30px;
       width: 200px;
-      box-shadow: 0 0 20px #00ffff;
+      box-shadow: 0 0 20px #ff3333;
       transition: 0.3s;
       cursor: pointer;
     }
 
     .game-card:hover {
-      background-color: #00ffff;
+      background-color: #ff3333;
       color: #0a0a0a;
       transform: scale(1.05);
+      box-shadow: 0 0 25px #ff6666;
     }
 
     .game-card h3 {
@@ -67,74 +84,143 @@
       font-size: 1rem;
     }
 
-    /* Responsive cho điện thoại */
+    /* Responsive */
     @media (max-width: 768px) {
-      header h1 {
-        font-size: 2rem;
-        margin-bottom: 20px;
-      }
-
-      .game-card {
-        width: 150px;
-        padding: 20px;
-      }
-
-      .game-card h3 {
-        font-size: 1.2rem;
-      }
-
-      .game-card p {
-        font-size: 0.9rem;
-      }
+      header h1 { font-size: 2rem; margin-bottom: 20px; }
+      .game-card { width: 150px; padding: 20px; }
+      .game-card h3 { font-size: 1.2rem; }
+      .game-card p { font-size: 0.9rem; }
     }
 
-    /* Responsive cho TV/màn hình lớn */
     @media (min-width: 1920px) {
-      header h1 {
-        font-size: 5rem;
-        margin-bottom: 50px;
-      }
-
-      .game-card {
-        width: 250px;
-        padding: 40px;
-      }
-
-      .game-card h3 {
-        font-size: 2rem;
-      }
-
-      .game-card p {
-        font-size: 1.2rem;
-      }
+      header h1 { font-size: 5rem; margin-bottom: 50px; }
+      .game-card { width: 250px; padding: 40px; }
+      .game-card h3 { font-size: 2rem; }
+      .game-card p { font-size: 1.2rem; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>GameZone - Chọn Game</h1>
-  </header>
+  <canvas id="plexus"></canvas>
+  <div class="content">
+    <header>
+      <h1>GameZone - Chọn Game</h1>
+    </header>
 
-  <div class="game-menu">
-    <!-- Game 1 -->
-    <div class="game-card" onclick="window.location.href='game1.html'">
-      <h3>Game 1</h3>
-      <p>Trò chơi hấp dẫn đầu tiên.</p>
+    <div class="game-menu">
+      <div class="game-card" onclick="window.location.href='game1.html'">
+        <h3>Game 1</h3>
+        <p>Trò chơi hấp dẫn đầu tiên.</p>
+      </div>
+
+      <div class="game-card" onclick="window.location.href='game2.html'">
+        <h3>Game 2</h3>
+        <p>Thử thách kỹ năng của bạn.</p>
+      </div>
+
+      <div class="game-card" onclick="window.location.href='game3.html'">
+        <h3>Game 3</h3>
+        <p>Trải nghiệm phiêu lưu cực chất.</p>
+      </div>
     </div>
-
-    <!-- Game 2 -->
-    <div class="game-card" onclick="window.location.href='game2.html'">
-      <h3>Game 2</h3>
-      <p>Thử thách kỹ năng của bạn.</p>
-    </div>
-
-    <!-- Game 3 -->
-    <div class="game-card" onclick="window.location.href='game3.html'">
-      <h3>Game 3</h3>
-      <p>Trải nghiệm phiêu lưu cực chất.</p>
-    </div>
-
-    <!-- Thêm game khác tương tự -->
   </div>
+
+  <script>
+    const canvas = document.getElementById('plexus');
+    const ctx = canvas.getContext('2d');
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    const particles = [];
+    const particleCount = 100; // tăng số hạt để nét hơn
+    const maxDistance = 180;
+
+    let mouse = { x: null, y: null };
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 1; // tăng tốc độ
+        this.vy = (Math.random() - 0.5) * 1;
+        this.size = 2.5; // lớn hơn để rõ nét
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+      }
+
+      draw() {
+        ctx.fillStyle = '#ff3333';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function initParticles() {
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function connectParticles() {
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          let dx = particles[i].x - particles[j].x;
+          let dy = particles[i].y - particles[j].y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < maxDistance) {
+            let alpha = 1 - dist / maxDistance;
+
+            // sáng hơn khi gần chuột
+            if (mouse.x && mouse.y) {
+              let dxMouse = (particles[i].x + particles[j].x) / 2 - mouse.x;
+              let dyMouse = (particles[i].y + particles[j].y) / 2 - mouse.y;
+              let distMouse = Math.sqrt(dxMouse*dxMouse + dyMouse*dyMouse);
+              if (distMouse < 120) alpha = 1;
+            }
+
+            ctx.strokeStyle = `rgba(255,51,51,${alpha})`;
+            ctx.lineWidth = 1.2; // nét hơn
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach(p => { p.update(); p.draw(); });
+      connectParticles();
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    window.addEventListener('mouseleave', () => {
+      mouse.x = null;
+      mouse.y = null;
+    });
+
+    initParticles();
+    animate();
+  </script>
 </body>
 </html>
