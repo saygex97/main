@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Đoán Số - GameZone</title>
+  <style>
+    /* ====== ROOT & RESET ====== */
+    :root{
+      --bg-1: #03120b;
+      --bg-2: #001607;
+      --panel: #0f1913;
+      --green: #3fe27a;
+      --green-weak: #2ea86b;
+      --muted: #9db79f;
+      --glass: rgba(255,255,255,0.03);
+      --radius:14px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.6);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+    body{
+      background: linear-gradient(180deg,var(--bg-1) 0%, var(--bg-2) 60%, #000 100%);
+      color:var(--green);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: env(safe-area-inset-top, 18px) 12px 24px; /* respect notch */
+      min-height:100vh;
+    }
+
+    /* ====== LAYOUT CONTAINER ====== */
+    .container{
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns: 1fr 380px;
+      gap:18px;
+      align-items:start;
+    }
+
+    /* break to single column earlier for mobile comfort */
+    @media (max-width:900px){
+      .container{grid-template-columns:1fr; padding-bottom:24px}
+    }
+
+    /* ====== PANEL ====== */
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: var(--radius);
+      padding:18px;
+      box-shadow: var(--shadow);
+      border:1px solid rgba(63,226,122,0.06);
+    }
+
+    /* ====== HEADER ====== */
+    header.site-title{
+      text-align:left;
+      margin-bottom:12px;
+    }
+    header.site-title h1{
+      color:var(--green);
+      margin:0 0 6px 0;
+      font-size:1.4rem;
+      letter-spacing:0.4px;
+    }
+    header.site-title p{
+      margin:0;
+      color:var(--muted);
+      font-size:0.88rem;
+    }
+
+    /* ====== GAME AREA ====== */
+    .game{display:flex;flex-direction:column;gap:12px;}
+
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .difficulty{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btn{
+      background:linear-gradient(180deg,var(--green),var(--green-weak));
+      color:#021006;
+      border:0;
+      padding:9px 12px;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(46,168,107,0.12);
+      transition:transform .12s ease, box-shadow .12s ease;
+      font-size:0.95rem;
+    }
+    .btn.secondary{
+      background:transparent;
+      color:var(--green);
+      border:1px solid rgba(63,226,122,0.14);
+      padding:8px 10px;
+      font-weight:600;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.active{box-shadow: 0 10px 30px rgba(63,226,122,0.18); transform:translateY(-2px);}
+
+    .card-main{
+      background:var(--panel);
+      border-radius:12px;
+      padding:14px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      border:1px solid rgba(255,255,255,0.02);
+      flex-wrap:wrap;
+    }
+
+    .range-info{ text-align:left; min-width:160px; }
+    .range-title{font-weight:700;color:var(--green)}
+    .range-sub{color:var(--muted);font-size:0.9rem;margin-top:6px}
+
+    .guess-area{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+    input[type="number"]{
+      width:140px;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:var(--glass);
+      color:var(--green);
+      font-weight:700;
+      font-size:1rem;
+      outline:none;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+    .info{ color:var(--muted); font-size:0.9rem; }
+
+    /* ====== FEEDBACK & HISTORY ====== */
+    .feedback{
+      background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0));
+      border-radius:12px;
+      padding:12px;
+      min-height:56px;
+      color:var(--green);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border:1px solid rgba(255,255,255,0.02);
+      flex-wrap:wrap;
+    }
+    .feedback .msg{font-weight:700; font-size:0.98rem}
+    .history{ margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
+    .chip{
+      background:rgba(63,226,122,0.06);
+      color:var(--green);
+      padding:6px 10px;
+      border-radius:10px;
+      font-weight:700;
+      border:1px solid rgba(63,226,122,0.08);
+      font-size:0.95rem;
+    }
+
+    /* ====== SIDEBAR / LEADERBOARD ====== */
+    .sidebar{ display:flex; flex-direction:column; gap:12px; }
+    .leaderboard{ overflow:auto; max-height:520px; padding:6px; border-radius:8px; border:1px dashed rgba(255,255,255,0.02); }
+    table.leader{ width:100%; border-collapse:collapse; color:var(--muted); font-size:0.92rem; }
+    th,td{ padding:8px 6px; text-align:left; border-bottom:1px dashed rgba(255,255,255,0.02) }
+    th{ color:var(--green); font-weight:700; font-size:0.9rem; }
+
+    .small{ font-size:0.86rem; color:var(--muted); }
+
+    /* ====== FOOTER CONTROLS ====== */
+    .footer-row{ display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:6px; flex-wrap:wrap; }
+
+    /* ====== MOBILE ADJUSTMENTS ====== */
+    @media (max-width:520px){
+      body{ padding-top:18px; padding-left:10px; padding-right:10px; }
+      header.site-title h1{ font-size:1.15rem }
+      header.site-title p{ font-size:0.82rem }
+      .container{ gap:12px; }
+      .panel{ padding:12px; }
+      .card-main{ flex-direction:column; align-items:flex-start; gap:10px; padding:10px; }
+      input[type="number"]{ width:110px; padding:10px; font-size:0.95rem; }
+      .leaderboard{ max-height:260px; }
+      .btn{ padding:8px 10px; font-size:0.9rem; border-radius:9px; }
+      .chip{ font-size:0.9rem; padding:6px 8px; }
+      .feedback{ text-align:center; flex-direction:column; align-items:center; gap:6px; }
+    }
+
+    /* ensure no horizontal scroll */
+    html,body{ overflow-x:hidden; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- LEFT: GAME -->
+    <div class="panel" aria-labelledby="game-title">
+      <header class="site-title">
+        <h1 id="game-title">Đoán Số - GameZone</h1>
+        <p>Phạm vi: <strong>1 – 1000</strong>. Chọn độ khó rồi bắt đầu!</p>
+      </header>
+
+      <main class="game" role="main">
+        <div class="controls" role="toolbar" aria-label="Điều khiển">
+          <div class="difficulty" role="tablist" aria-label="Chọn độ khó">
+            <button class="btn difficulty-btn active" data-mode="super" title="Siêu Khó: 5 lần">Siêu Khó</button>
+            <button class="btn difficulty-btn" data-mode="hard" title="Khó: 10 lần">Khó</button>
+            <button class="btn difficulty-btn" data-mode="easy" title="Dễ: 20 lần">Dễ</button>
+          </div>
+
+          <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+            <button id="newGame" class="btn secondary" title="Bắt đầu lại">Bắt đầu lại</button>
+            <button id="resetScores" class="btn secondary" title="Xóa bảng xếp hạng">Xóa BXH</button>
+          </div>
+        </div>
+
+        <section class="card-main" aria-live="polite">
+          <div class="range-info">
+            <div class="range-title">Số còn đoán</div>
+            <div class="range-sub">Phạm vi: <strong>1</strong> → <strong>1000</strong></div>
+            <div class="range-sub" style="margin-top:8px">Lần đoán còn lại: <span id="attemptsLeft" class="chip">—</span></div>
+          </div>
+
+          <div class="guess-area" aria-label="Khu vực nhập dự đoán">
+            <input id="guessInput" type="number" min="1" max="1000" placeholder="Nhập số 1-1000" aria-label="Nhập dự đoán">
+            <button id="submitGuess" class="btn" title="Đoán">Đoán</button>
+          </div>
+        </section>
+
+        <div class="feedback" role="status">
+          <div class="msg" id="message">Chọn độ khó và nhấn "Đoán" để bắt đầu.</div>
+          <div class="info small">Số đã đoán: <span id="historyCount">0</span></div>
+        </div>
+
+        <div id="historyList" class="history" aria-live="polite"></div>
+
+        <div class="footer-row">
+          <div class="small">Mẹo: Hệ thống sẽ gợi ý 'Lớn hơn' hoặc 'Nhỏ hơn'.</div>
+          <div style="display:flex;gap:8px">
+            <button id="hintBtn" class="btn secondary" title="Gợi ý">Yêu cầu hint</button>
+            <button id="giveUpBtn" class="btn secondary" title="Bỏ cuộc">Bỏ Cuộc</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- RIGHT: SIDEBAR / LEADERBOARD -->
+    <aside class="panel sidebar" aria-labelledby="lb-title">
+      <div>
+        <h3 id="lb-title" style="margin:0 0 6px 0; color:var(--green)">Bảng xếp hạng</h3>
+        <div class="small">Lưu trên trình duyệt (localStorage). Kết quả tốt sẽ được lưu.</div>
+      </div>
+
+      <div class="leaderboard" role="region" aria-live="polite">
+        <table class="leader" id="leaderTable" aria-describedby="lb-desc">
+          <thead>
+            <tr><th>#</th><th>Tên</th><th>Độ khó</th><th>Đoán</th></tr>
+          </thead>
+          <tbody id="leaderBody">
+            <!-- rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="small">Lưu ý:</div>
+        <ul class="small" style="margin:0 0 0 18px;color:var(--muted)">
+          <li>Siêu Khó: 5 lượt, Khó: 10 lượt, Dễ: 20 lượt.</li>
+          <li>Phạm vi luôn 1–1000.</li>
+          <li>Bảng xếp hạng sắp xếp theo lượt đoán ít → nhiều.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // ===== CONFIG =====
+    const modes = {
+      super: { name:'Siêu Khó', attempts:5 },
+      hard:  { name:'Khó', attempts:10 },
+      easy:  { name:'Dễ', attempts:20 }
+    };
+    const RANGE_MIN = 1, RANGE_MAX = 1000;
+    const STORAGE_KEY = 'dg_leaderboard_v2';
+
+    // ===== STATE =====
+    let mode = 'super';
+    let attemptsLeft = modes[mode].attempts;
+    let secret = rand(RANGE_MIN,RANGE_MAX);
+    let history = [];
+    let gameActive = true;
+
+    // ===== DOM =====
+    const attemptsLeftEl = document.getElementById('attemptsLeft');
+    const guessInput = document.getElementById('guessInput');
+    const submitGuess = document.getElementById('submitGuess');
+    const messageEl = document.getElementById('message');
+    const historyList = document.getElementById('historyList');
+    const historyCount = document.getElementById('historyCount');
+    const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+    const newGameBtn = document.getElementById('newGame');
+    const leaderBody = document.getElementById('leaderBody');
+    const resetScoresBtn = document.getElementById('resetScores');
+    const hintBtn = document.getElementById('hintBtn');
+    const giveUpBtn = document.getElementById('giveUpBtn');
+
+    // ===== INIT UI =====
+    initHandlers();
+    startNewGame();
+    renderLeaderboard();
+    // focus input on load
+    setTimeout(()=>{ try{ guessInput.focus(); }catch{} }, 300);
+
+    // ===== HANDLERS =====
+    function initHandlers(){
+      difficultyBtns.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          difficultyBtns.forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          mode = btn.dataset.mode;
+          startNewGame();
+        });
+      });
+
+      newGameBtn.addEventListener('click', startNewGame);
+      submitGuess.addEventListener('click', onGuess);
+      guessInput.addEventListener('keydown', e=>{ if(e.key==='Enter') onGuess(); });
+      resetScoresBtn.addEventListener('click', ()=>{
+        if(confirm('Xóa toàn bộ bảng xếp hạng trên trình duyệt?')){
+          localStorage.removeItem(STORAGE_KEY);
+          renderLeaderboard();
+        }
+      });
+
+      hintBtn.addEventListener('click', ()=>{
+        if(!gameActive){ showMessage('Game kết thúc. Bắt đầu mới để lấy hint.', false); return; }
+        // hint: khoảng gần secret
+        const spread = Math.max(8, Math.floor((RANGE_MAX - RANGE_MIN) / 30)); // ~33
+        const a = Math.max(RANGE_MIN, secret - spread);
+        const b = Math.min(RANGE_MAX, secret + spread);
+        showMessage(`Hint: số nằm trong khoảng ${a} — ${b}.`, true);
+      });
+
+      giveUpBtn.addEventListener('click', ()=>{
+        if(!confirm('Bạn có chắc muốn bỏ cuộc?')) return;
+        showMessage(`Bạn đã bỏ cuộc. Số đúng là ${secret}.`, false);
+        endGame(false);
+      });
+    }
+
+    // ===== GAME LOGIC =====
+    function startNewGame(){
+      attemptsLeft = modes[mode].attempts;
+      secret = rand(RANGE_MIN,RANGE_MAX);
+      history = [];
+      gameActive = true;
+      guessInput.value = '';
+      updateUI();
+      showMessage(`Bắt đầu chế độ ${modes[mode].name}. Bạn có ${attemptsLeft} lần đoán. Good luck!`, true);
+    }
+
+    function onGuess(){
+      if(!gameActive){ showMessage('Game đã kết thúc. Nhấn "Bắt đầu lại".'); return; }
+      const v = parseInt(guessInput.value,10);
+      if(Number.isNaN(v) || v < RANGE_MIN || v > RANGE_MAX){
+        showMessage(`Vui lòng nhập số từ ${RANGE_MIN} đến ${RANGE_MAX}.`, false);
+        return;
+      }
+      // record
+      history.push(v);
+      historyCount.textContent = history.length;
+      updateHistoryUI();
+
+      attemptsLeft--;
+      updateUI();
+
+      if(v === secret){
+        const used = modes[mode].attempts - attemptsLeft;
+        showMessage(`Chính xác! Bạn đoán đúng ${v} — dùng ${used} lần.`, true);
+        gameActive = false;
+        promptSaveResult(used);
+        return;
+      } else if(attemptsLeft <= 0){
+        showMessage(`Hết lượt! Số đúng là ${secret}.`, false);
+        gameActive = false;
+        return;
+      } else {
+        const hint = v < secret ? 'Lớn hơn' : 'Nhỏ hơn';
+        showMessage(`${hint}! Bạn còn ${attemptsLeft} lượt.`, true);
+      }
+      guessInput.value = '';
+      guessInput.focus();
+    }
+
+    function endGame(win){
+      gameActive = false;
+      guessInput.disabled = true;
+      submitGuess.disabled = true;
+    }
+
+    function updateUI(){
+      attemptsLeftEl.textContent = attemptsLeft;
+      guessInput.disabled = !gameActive;
+      submitGuess.disabled = !gameActive;
+      renderLeaderboard();
+    }
+
+    function updateHistoryUI(){
+      historyList.innerHTML = '';
+      const last = history.slice(-12).reverse();
+      last.forEach(h=>{
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = h;
+        historyList.appendChild(chip);
+      });
+    }
+
+    function showMessage(txt, positive=true){
+      messageEl.textContent = txt;
+      messageEl.style.color = positive ? 'var(--green)' : '#ff6b6b';
+    }
+
+    // ===== LEADERBOARD (localStorage) =====
+    function loadLeaderboard(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return [];
+        return JSON.parse(raw);
+      }catch(e){ return []; }
+    }
+    function saveToLeaderboard(entry){
+      const arr = loadLeaderboard();
+      arr.push(entry);
+      arr.sort((a,b)=>{
+        if(a.attempts !== b.attempts) return a.attempts - b.attempts;
+        return a.timestamp - b.timestamp;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr.slice(0,50)));
+    }
+    function renderLeaderboard(){
+      const arr = loadLeaderboard();
+      leaderBody.innerHTML = '';
+      if(arr.length === 0){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.className = 'small';
+        td.textContent = 'Chưa có kết quả nào.';
+        tr.appendChild(td);
+        leaderBody.appendChild(tr);
+        return;
+      }
+      arr.slice(0,20).forEach((r,i)=>{
+        const tr = document.createElement('tr');
+        const rank = document.createElement('td'); rank.textContent = (i+1);
+        const name = document.createElement('td'); name.textContent = r.name;
+        const md = document.createElement('td'); md.textContent = modes[r.mode] ? modes[r.mode].name : r.mode;
+        const at = document.createElement('td'); at.textContent = r.attempts;
+        tr.appendChild(rank); tr.appendChild(name); tr.appendChild(md); tr.appendChild(at);
+        leaderBody.appendChild(tr);
+      });
+    }
+
+    function promptSaveResult(usedAttempts){
+      let name = prompt(`Bạn thắng! Lần đoán: ${usedAttempts}. Nhập tên để lưu (bỏ trống dùng "Player"):`);
+      if(name === null) name = 'Player';
+      if(name.trim() === '') name = 'Player';
+      saveToLeaderboard({name, mode, attempts: usedAttempts, timestamp: Date.now()});
+      renderLeaderboard();
+    }
+
+    // ===== HELPERS =====
+    function rand(min,max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+  </script>
+</body>
+</html>
