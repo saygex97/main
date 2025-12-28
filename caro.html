@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Cờ Caro Gaming</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Orbitron',sans-serif;
+    background:radial-gradient(circle at top,#0a2a3f,#020a12 70%);
+    color:#00f7ff;
+    text-align:center;
+}
+h1{
+    margin-top:20px;
+    font-size:36px;
+    text-shadow:0 0 12px #00f7ff,0 0 30px #0088ff;
+}
+button{
+    padding:14px 32px;
+    margin:10px;
+    font-family:'Orbitron',sans-serif;
+    cursor:pointer;
+    border:none;
+    border-radius:8px;
+    background:linear-gradient(135deg,#00f7ff,#005eff);
+    font-weight:bold;
+    box-shadow:0 0 15px #00f7ff;
+    transition:.2s;
+}
+button:hover{transform:scale(1.1)}
+#menu,#difficulty{margin-top:30px}
+#status{margin:15px;font-size:20px}
+#board{
+    display:none;
+    margin:25px auto;
+    display:grid;
+    grid-template-columns:repeat(3,120px);
+    gap:14px;
+    justify-content:center;
+}
+.cell{
+    width:120px;height:120px;
+    background:#021b2a;
+    border-radius:14px;
+    border:2px solid #00f7ff;
+    font-size:56px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    box-shadow:inset 0 0 15px rgba(0,247,255,.4),0 0 15px rgba(0,247,255,.6);
+    transition:.2s;
+}
+.cell:hover{transform:scale(1.1)}
+.win{
+    animation:pulse 0.8s infinite alternate;
+}
+@keyframes pulse{
+    from{box-shadow:0 0 20px #00f7ff}
+    to{box-shadow:0 0 40px #00ffff}
+}
+#controls{display:none}
+
+/* WIN SCREEN */
+#winScreen{
+    position:fixed;
+    inset:0;
+    background:rgba(0,10,20,.95);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    z-index:10;
+}
+#winScreen h2{
+    font-size:48px;
+    margin-bottom:20px;
+    animation:zoom .5s ease;
+}
+@keyframes zoom{
+    from{transform:scale(.5);opacity:0}
+    to{transform:scale(1);opacity:1}
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎮 CỜ CARO GAMING</h1>
+
+<div id="menu">
+    <button onclick="startPVP()">👥 1 VS 1</button>
+    <button onclick="showDifficulty()">🤖 VS AI</button>
+</div>
+
+<div id="difficulty" style="display:none">
+    <button onclick="startAI('easy')">🤖 DỄ</button>
+    <button onclick="startAI('hard')">😈 KHÓ</button>
+    <button onclick="startAI('impossible')">☠ BẤT BẠI</button>
+</div>
+
+<div id="status"></div>
+<div id="board"></div>
+
+<div id="controls">
+    <button onclick="resetGame()">🔄 CHƠI LẠI</button>
+    <button onclick="goMenu()">⬅ MENU</button>
+</div>
+
+<div id="winScreen">
+    <h2 id="winText"></h2>
+    <button onclick="closeWin()">🎮 TIẾP TỤC</button>
+</div>
+
+<script>
+/* ===== SOUND ===== */
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+function beep(freq,dur){
+    const o=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=freq;
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);
+    o.stop(audioCtx.currentTime+dur);
+}
+const clickSound=()=>beep(500,.08);
+const winSound=()=>beep(900,.4);
+const drawSound=()=>beep(300,.3);
+
+/* ===== GAME ===== */
+const boardDiv=document.getElementById("board");
+const statusText=document.getElementById("status");
+const menu=document.getElementById("menu");
+const diff=document.getElementById("difficulty");
+const controls=document.getElementById("controls");
+const winScreen=document.getElementById("winScreen");
+const winText=document.getElementById("winText");
+
+let board=[],current="X",active=true,mode="pvp",level="easy";
+
+const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function startPVP(){ mode="pvp"; start(); }
+function showDifficulty(){ menu.style.display="none"; diff.style.display="block"; }
+function startAI(lv){ mode="ai"; level=lv; start(); }
+
+function start(){
+    menu.style.display="none";
+    diff.style.display="none";
+    boardDiv.style.display="grid";
+    controls.style.display="block";
+    resetGame();
+}
+
+function createBoard(){
+    boardDiv.innerHTML="";
+    for(let i=0;i<9;i++){
+        const c=document.createElement("div");
+        c.className="cell";
+        c.onclick=()=>move(i,c);
+        boardDiv.appendChild(c);
+    }
+}
+
+function move(i,cell){
+    if(!active||board[i])return;
+    clickSound();
+    board[i]=current;
+    cell.textContent=current;
+
+    if(checkWin(current)){
+        highlightWin(current);
+        winSound();
+        showWin(current+" THẮNG 🏆");
+        return;
+    }
+    if(!board.includes("")){
+        drawSound();
+        showWin("HÒA 😐");
+        return;
+    }
+
+    current=current==="X"?"O":"X";
+    statusText.textContent="TURN: "+current;
+
+    if(mode==="ai"&&current==="O")setTimeout(aiMove,400);
+}
+
+function aiMove(){
+    let move;
+    if(level==="hard") move=bestMove("O") ?? bestMove("X");
+    if(level==="impossible") move=minimax(board,"O").index;
+    if(move==null){
+        const empty=board.map((v,i)=>v===""?i:null).filter(v=>v!=null);
+        move=empty[Math.floor(Math.random()*empty.length)];
+    }
+    move!=null && moveCell(move);
+}
+
+function moveCell(i){
+    move(i,boardDiv.children[i]);
+}
+
+function bestMove(p){
+    for(let i=0;i<9;i++){
+        if(board[i]===""){
+            board[i]=p;
+            if(checkWin(p)){board[i]="";return i;}
+            board[i]="";
+        }
+    }
+    return null;
+}
+
+function minimax(newBoard,player){
+    const avail=newBoard.map((v,i)=>v===""?i:null).filter(v=>v!=null);
+    if(checkStatic("X",newBoard)) return {score:-10};
+    if(checkStatic("O",newBoard)) return {score:10};
+    if(avail.length===0) return {score:0};
+
+    let moves=[];
+    for(let i of avail){
+        let move={index:i};
+        newBoard[i]=player;
+        let result=minimax(newBoard,player==="O"?"X":"O");
+        move.score=result.score;
+        newBoard[i]="";
+        moves.push(move);
+    }
+    return moves.reduce((a,b)=>
+        player==="O"? (a.score>b.score?a:b):(a.score<b.score?a:b)
+    );
+}
+
+function checkWin(p){
+    return wins.some(w=>w.every(i=>board[i]===p));
+}
+function checkStatic(p,b){
+    return wins.some(w=>w.every(i=>b[i]===p));
+}
+
+function highlightWin(p){
+    wins.forEach(w=>{
+        if(w.every(i=>board[i]===p))
+            w.forEach(i=>boardDiv.children[i].classList.add("win"));
+    });
+}
+
+function showWin(t){
+    active=false;
+    winText.textContent=t;
+    winScreen.style.display="flex";
+}
+function closeWin(){ winScreen.style.display="none"; }
+
+function resetGame(){
+    board=["","","","","","","","",""];
+    current="X";
+    active=true;
+    statusText.textContent="TURN: X";
+    createBoard();
+}
+
+function goMenu(){
+    boardDiv.style.display="none";
+    controls.style.display="none";
+    menu.style.display="block";
+    diff.style.display="none";
+    statusText.textContent="";
+}
+</script>
+
+</body>
+</html>
