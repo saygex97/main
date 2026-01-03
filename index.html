@@ -18,8 +18,8 @@
       color: #00ffff;
       display: flex;
       flex-direction: column;
-      justify-content: center; /* căn giữa theo chiều dọc */
-      align-items: center;    /* căn giữa theo chiều ngang */
+      justify-content: center; 
+      align-items: center;    
       min-height: 100vh;
       text-align: center;
       padding: 20px;
@@ -73,63 +73,64 @@
       background-color: #00bbbb;
     }
 
+    /* --- CSS CHO NÚT NHẠC GAMING --- */
+    .music-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+
+    .gaming-audio-btn {
+      background: #0a0a0a;
+      border: 2px solid #00ffff;
+      color: #00ffff;
+      padding: 10px 15px;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+      clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gaming-audio-btn:hover {
+      background: #00ffff;
+      color: #0a0a0a;
+      box-shadow: 0 0 20px #00ffff;
+    }
+
+    .gaming-audio-btn.playing {
+      border-color: #ff00ff; /* Chuyển sang màu hồng neon khi phát nhạc */
+      color: #ff00ff;
+      box-shadow: 0 0 15px #ff00ff;
+    }
+    /* ------------------------------- */
+
     footer {
       margin-top: 30px;
       color: #00bbbb;
       text-align: center;
     }
 
-    /* Responsive cho điện thoại */
+    /* Responsive */
     @media (max-width: 768px) {
-      header h1 {
-        font-size: 2rem;
-      }
-
-      .hero {
-        padding: 25px;
-      }
-
-      .hero h2 {
-        font-size: 1.5rem;
-      }
-
-      .hero p {
-        font-size: 1rem;
-      }
-
-      .hero button {
-        padding: 12px 25px;
-        font-size: 0.95rem;
-      }
-    }
-
-    /* Responsive cho TV hoặc màn hình lớn */
-    @media (min-width: 1920px) {
-      header h1 {
-        font-size: 5rem;
-      }
-
-      .hero {
-        padding: 60px;
-        max-width: 1200px;
-      }
-
-      .hero h2 {
-        font-size: 3rem;
-      }
-
-      .hero p {
-        font-size: 1.5rem;
-      }
-
-      .hero button {
-        padding: 20px 40px;
-        font-size: 1.3rem;
-      }
+      header h1 { font-size: 2rem; }
+      .hero { padding: 25px; }
+      .hero h2 { font-size: 1.5rem; }
+      .hero p { font-size: 1rem; }
     }
   </style>
 </head>
 <body>
+
+  <audio id="bg-music" loop>
+    <source src="link-nhac-cua-ban.mp3" type="audio/mpeg">
+  </audio>
+
   <header>
     <h1>GameZone</h1>
   </header>
@@ -137,12 +138,45 @@
   <section class="hero">
     <h2>Chào mừng đến với GameZone!</h2>
     <p>Khám phá những trò chơi hấp dẫn và thử thách bản thân với các bảng xếp hạng!</p>
-    <!-- Nút chuyển sang menu.html -->
     <button onclick="window.location.href='menu.html'">Khám Phá Ngay</button>
   </section>
+
+  <div class="music-container">
+    <button id="music-toggle" class="gaming-audio-btn">
+      <span id="music-status">OFF</span> 🎵 MUSIC
+    </button>
+  </div>
 
   <footer>
     &copy; 2025 chó hải 🥶💩. All rights reserved.
   </footer>
+
+  <script>
+    const music = document.getElementById('bg-music');
+    const btn = document.getElementById('music-toggle');
+    const statusText = document.getElementById('music-status');
+
+    btn.addEventListener('click', () => {
+      if (music.paused) {
+        music.play();
+        btn.classList.add('playing');
+        statusText.innerText = "ON";
+      } else {
+        music.pause();
+        btn.classList.remove('playing');
+        statusText.innerText = "OFF";
+      }
+    });
+
+    // Cố gắng phát nhạc khi người dùng tương tác lần đầu với trang
+    document.addEventListener('click', () => {
+        // Trình duyệt chặn autoplay, nên nhạc sẽ chỉ phát khi click vào bất cứ đâu
+        if (music.paused && !btn.classList.contains('playing')) {
+             console.log("Sẵn sàng phát nhạc!");
+        }
+    }, { once: true });
+  </script>
+
 </body>
-</html>
+  </html>
+  
