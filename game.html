@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stick War: More Gold Edition</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #111; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        canvas { display: block; background: #1a2a6c; }
+        
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: none; }
+        .top-bar { display: flex; justify-content: space-between; padding: 10px; pointer-events: auto; color: white; background: rgba(0,0,0,0.6); border-bottom: 2px solid #f1c40f; }
+        .stats div { display: inline-block; margin-right: 25px; font-weight: bold; font-size: 22px; color: #f1c40f; text-shadow: 1px 1px 2px #000; }
+
+        .controls, .upgrades { position: absolute; top: 80px; pointer-events: auto; display: flex; flex-direction: column; gap: 10px; }
+        .controls { left: 15px; }
+        .upgrades { right: 15px; align-items: flex-end; }
+
+        .btn {
+            border: 2px solid rgba(255,255,255,0.3); padding: 12px; color: white; font-weight: bold; cursor: pointer;
+            border-radius: 8px; width: 210px; transition: 0.2s; box-shadow: 0 5px 0 rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 1px #000;
+        }
+        .btn:hover { transform: scale(1.02); brightness: 1.2; }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+        
+        .btn-miner { background: #f39c12; }
+        .btn-sword { background: #2980b9; }
+        .btn-archer { background: #c0392b; }
+        .btn-giant { background: #2c3e50; border: 2px solid #bdc3c7; }
+        .btn-upg { background: #8e44ad; }
+        .btn-skill { background: #d35400; border: 2px solid #ff7f50; }
+        .disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
+
+        .screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(45deg, #0f0c29, #302b63, #24243e); z-index: 100;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
+        }
+        h1 { font-size: 60px; color: #f1c40f; margin-bottom: 10px; text-shadow: 0 0 20px #f39c12; }
+        .big-btn {
+            padding: 20px 50px; font-size: 26px; margin: 12px; cursor: pointer;
+            background: #27ae60; color: white; border: none; border-radius: 15px;
+            font-weight: bold; box-shadow: 0 8px 0 #1e8449; width: 280px; transition: 0.2s;
+        }
+        .big-btn:hover { background: #2ecc71; transform: translateY(-2px); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="game-ui">
+        <div class="top-bar">
+            <div class="stats">
+                <div id="gold-display">💰 600</div>
+                <div id="pop-display">👥 0</div>
+            </div>
+            <div style="color: #fff; font-weight: bold;">CHẾ ĐỘ: <span id="diff-text">-</span></div>
+            <button class="btn" style="width:auto; padding:5px 20px; background:#e74c3c;" onclick="location.reload()">THOÁT</button>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-miner" id="buy-miner">🛠 THỢ MỎ (150G)</button>
+            <button class="btn btn-sword" id="buy-sword">⚔️ KIẾM SĨ (250G)</button>
+            <button class="btn btn-archer" id="buy-archer">🏹 CUNG THỦ (450G)</button>
+            <button class="btn btn-giant" id="buy-giant">👹 KHỔNG LỒ (1200G)</button>
+        </div>
+
+        <div class="upgrades">
+            <button class="btn btn-upg" id="upg-dmg">🔥 CÔNG+ (400G)</button>
+            <button class="btn btn-upg" id="upg-hp" style="background:#27ae60">🛡️ MÁU+ (500G)</button>
+            <button class="btn btn-upg" id="upg-mine">⛏ KHAI THÁC+ (400G)</button>
+            <button class="btn btn-skill" id="use-skill">⚡ SIÊU MƯA TÊN</button>
+        </div>
+    </div>
+
+    <div id="start-screen" class="screen">
+        <h1>STICK WAR: GIANT V4</h1>
+        <p style="margin-bottom: 30px; font-size: 1.2em; color: #bdc3c7;">2 Mỏ Vàng - AI Đã Cân Bằng</p>
+        <button class="big-btn" data-diff="0.5" style="background:#3498db; box-shadow:0 8px 0 #2980b9">DỄ (AI CHẬM)</button>
+        <button class="big-btn" data-diff="1.0">THƯỜNG</button>
+        <button class="big-btn" data-diff="1.8" style="background:#c0392b; box-shadow:0 8px 0 #922b21">KHÓ (SPAM)</button>
+    </div>
+
+    <div id="end-screen" class="screen hidden">
+        <h1 id="end-msg">KẾT THÚC</h1>
+        <button class="big-btn" onclick="location.reload()">CHƠI LẠI</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ui = document.getElementById('game-ui');
+        
+        let gameRunning = false;
+        let groundY, gold = 600, difficulty = 1.0;
+        let playerBase, enemyBase;
+        let units = [], arrows = [], particles = [];
+        let upgradeLevel = { dmg: 1, hp: 1, mine: 1 };
+        let skillCooldown = 0;
+        let shake = 0;
+
+        const STATS = {
+            miner:  { cost: 150, hp: 80, dmg: 5, range: 30, speed: 2.2, color: '#f39c12', scale: 1 },
+            sword:  { cost: 250, hp: 180, dmg: 18, range: 45, speed: 2.6, color: '#3498db', scale: 1 },
+            archer: { cost: 450, hp: 100, dmg: 22, range: 350, speed: 2.3, color: '#e74c3c', scale: 1 },
+            giant:  { cost: 1200, hp: 1200, dmg: 100, range: 70, speed: 1.1, color: '#2c3e50', scale: 2.3 }
+        };
+
+        class Base {
+            constructor(side) {
+                this.side = side;
+                this.maxHp = 5000;
+                this.hp = 5000;
+                this.w = 120; this.h = 200;
+                this.x = (side === 'player') ? 80 : canvas.width - 200;
+                this.y = groundY - this.h;
+            }
+            draw() {
+                ctx.fillStyle = (this.side === 'player') ? '#27ae60' : '#c0392b';
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                // Mái nhà
+                ctx.beginPath();
+                ctx.moveTo(this.x - 10, this.y);
+                ctx.lineTo(this.x + this.w/2, this.y - 40);
+                ctx.lineTo(this.x + this.w + 10, this.y);
+                ctx.fill();
+                
+                // HP Bar
+                ctx.fillStyle = '#333'; ctx.fillRect(this.x, this.y - 60, this.w, 15);
+                ctx.fillStyle = (this.hp/this.maxHp > 0.3) ? '#2ecc71' : '#e74c3c';
+                ctx.fillRect(this.x, this.y - 60, (this.hp/this.maxHp)*this.w, 15);
+            }
+        }
+
+        class Unit {
+            constructor(type, side) {
+                this.type = type; this.side = side;
+                const s = STATS[type];
+                let hMod = (side === 'player') ? upgradeLevel.hp : (1 + (difficulty-1)*0.4);
+                let dMod = (side === 'player') ? upgradeLevel.dmg : (1 + (difficulty-1)*0.4);
+                
+                this.maxHp = s.hp * hMod; this.hp = this.maxHp;
+                this.dmg = s.dmg * dMod;
+                this.range = s.range; this.speed = s.speed;
+                this.scale = s.scale; this.color = s.color;
+                this.w = 30 * this.scale; this.h = 50 * this.scale;
+                
+                // Vị trí xuất phát
+                this.x = (side === 'player') ? playerBase.x + 120 : enemyBase.x - 50;
+                this.y = groundY - this.h;
+                
+                this.attackTimer = 0; this.anim = 0;
+                this.hasGold = false; this.mineTimer = 0;
+                
+                // Chọn ngẫu nhiên 1 trong 2 mỏ nếu là miner phe ta
+                this.mineTargetX = (side === 'player') ? (Math.random() > 0.5 ? 20 : 60) : (canvas.width - 20);
+            }
+
+            update() {
+                if (this.type === 'miner') {
+                    const homeX = (this.side === 'player') ? playerBase.x + 40 : enemyBase.x + 40;
+                    if (this.hasGold) {
+                        if (Math.abs(this.x - homeX) < 15) { 
+                            this.hasGold = false; 
+                            if(this.side==='player') gold += 60 * upgradeLevel.mine;
+                        } else { this.move(homeX); }
+                    } else {
+                        if (Math.abs(this.x - this.mineTargetX) < 15) {
+                            this.mineTimer++; if(this.mineTimer > 50) { this.hasGold = true; this.mineTimer = 0; }
+                        } else { this.move(this.mineTargetX); }
+                    }
+                } else {
+                    let target = null, minDist = 9999;
+                    const enemies = units.filter(u => u.side !== this.side);
+                    const eBase = (this.side === 'player') ? enemyBase : playerBase;
+                    
+                    enemies.forEach(e => { let d = Math.abs(e.x - this.x); if(d < minDist) { minDist = d; target = e; } });
+                    let dBase = Math.abs(eBase.x - this.x); if(dBase < minDist) { target = eBase; minDist = dBase; }
+
+                    if (minDist <= this.range) {
+                        if (this.attackTimer <= 0) {
+                            if (this.type === 'archer') {
+                                arrows.push({x:this.x, y:this.y+10, tx:target.x+15, ty:target.y+20, dmg:this.dmg, side:this.side});
+                            } else { 
+                                target.hp -= this.dmg; 
+                                if(this.type==='giant') { shake = 10; spawnParticle("-"+Math.floor(this.dmg), target.x, target.y, 'white'); }
+                            }
+                            this.attackTimer = (this.type==='giant')?90:45;
+                        }
+                    } else { this.move(target.x); }
+                }
+                if(this.attackTimer > 0) this.attackTimer--;
+            }
+
+            move(tx) { 
+                this.x += (tx > this.x ? 1 : -1) * this.speed; 
+                this.anim += 0.18; 
+            }
+
+            draw() {
+                let cx = this.x + this.w/2, cy = this.y + 15 * this.scale;
+                ctx.lineWidth = 2 * this.scale; 
+                ctx.strokeStyle = (this.side==='player')?'#fff':'#000';
+                
+                // Head
+                ctx.beginPath(); ctx.arc(cx, cy, 7*this.scale, 0, Math.PI*2); ctx.stroke();
+                // Body
+                ctx.beginPath(); ctx.moveTo(cx, cy+7*this.scale); ctx.lineTo(cx, cy+25*this.scale); ctx.stroke();
+                // Legs
+                let leg = Math.sin(this.anim)*9*this.scale;
+                ctx.beginPath(); ctx.moveTo(cx, cy+25*this.scale); ctx.lineTo(cx-leg, cy+45*this.scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx, cy+25*this.scale); ctx.lineTo(cx+leg, cy+45*this.scale); ctx.stroke();
+                
+                // Tool/Weapon
+                ctx.fillStyle = this.hasGold ? '#f1c40f' : this.color;
+                ctx.fillRect(cx+4, cy+8, 16*this.scale, 6*this.scale);
+
+                // HP Small
+                ctx.fillStyle = 'red'; ctx.fillRect(this.x, this.y - 10, this.w, 4);
+                ctx.fillStyle = '#0f0'; ctx.fillRect(this.x, this.y - 10, (this.hp/this.maxHp)*this.w, 4);
+            }
+        }
+
+        function spawnParticle(t, x, y, c) {
+            particles.push({t, x, y, c, l: 40});
+        }
+
+        function spawnUnit(type, side) {
+            if(side === 'player') {
+                if(gold >= STATS[type].cost) { 
+                    gold -= STATS[type].cost; 
+                    units.push(new Unit(type, 'player')); 
+                }
+            } else { units.push(new Unit(type, 'enemy')); }
+        }
+
+        let aiTimer = 0;
+        function gameLoop() {
+            if(!gameRunning) return;
+            ctx.save();
+            if(shake > 0) { ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake); shake *= 0.85; }
+            
+            // Vẽ nền
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+            // Bầu trời đêm
+            let grad = ctx.createLinearGradient(0,0,0,groundY);
+            grad.addColorStop(0, '#0f0c29'); grad.addColorStop(1, '#302b63');
+            ctx.fillStyle = grad; ctx.fillRect(0,0,canvas.width, groundY);
+            // Đất
+            ctx.fillStyle = '#1b5e20'; ctx.fillRect(0, groundY, canvas.width, canvas.height);
+            // Vẽ Mỏ Vàng
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath(); ctx.arc(20, groundY, 20, Math.PI, 0); ctx.fill();
+            ctx.beginPath(); ctx.arc(60, groundY, 20, Math.PI, 0); ctx.fill();
+            ctx.beginPath(); ctx.arc(canvas.width-20, groundY, 20, Math.PI, 0); ctx.fill();
+
+            playerBase.draw(); enemyBase.draw();
+            
+            // Update Units
+            for(let i=units.length-1; i>=0; i--) {
+                units[i].update(); units[i].draw();
+                if(units[i].hp <= 0) units.splice(i, 1);
+            }
+            
+            // Update Arrows
+            for(let i=arrows.length-1; i>=0; i--) {
+                let a = arrows[i];
+                let dx = a.tx - a.x, dy = a.ty - a.y, d = Math.sqrt(dx*dx+dy*dy);
+                if(d < 12) {
+                    units.forEach(u => { if(u.side!==a.side && Math.abs(u.x-a.x)<30) u.hp -= a.dmg; });
+                    arrows.splice(i, 1);
+                } else { a.x += dx/d*14; a.y += dy/d*14; }
+                ctx.fillStyle = '#fff'; ctx.fillRect(a.x, a.y, 6, 2);
+            }
+
+            // Update Particles
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                ctx.fillStyle = p.c; ctx.fillText(p.t, p.x, p.y);
+                p.y--; p.l--; if(p.l<=0) particles.splice(i, 1);
+            }
+
+            // AI Logic (Cân bằng lại)
+            aiTimer++;
+            let spawnRate = (difficulty < 1) ? 0.004 : 0.01 * difficulty; // Dễ: rất chậm
+            if(Math.random() < spawnRate && aiTimer > 100) {
+                let r = Math.random();
+                let t = (r < 0.5) ? 'sword' : (r < 0.8) ? 'archer' : 'giant';
+                spawnUnit(t, 'enemy');
+                aiTimer = 0;
+            }
+
+            if(skillCooldown > 0) skillCooldown--;
+            document.getElementById('gold-display').innerText = `💰 ${Math.floor(gold)}`;
+            document.getElementById('pop-display').innerText = `👥 ${units.filter(u=>u.side==='player').length}`;
+            
+            if(playerBase.hp <= 0) endGame("BẠN THUA!");
+            if(enemyBase.hp <= 0) endGame("CHIẾN THẮNG!");
+
+            ctx.restore();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame(m) {
+            gameRunning = false;
+            document.getElementById('end-screen').classList.remove('hidden');
+            document.getElementById('end-msg').innerText = m;
+        }
+
+        // Event Listeners
+        document.querySelectorAll('.big-btn[data-diff]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                difficulty = parseFloat(btn.dataset.diff);
+                document.getElementById('diff-text').innerText = btn.innerText;
+                document.getElementById('start-screen').classList.add('hidden');
+                ui.style.display = 'block';
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                groundY = canvas.height - 120;
+                playerBase = new Base('player');
+                enemyBase = new Base('enemy');
+                gameRunning = true;
+                gameLoop();
+            });
+        });
+
+        document.getElementById('buy-miner').onclick = () => spawnUnit('miner', 'player');
+        document.getElementById('buy-sword').onclick = () => spawnUnit('sword', 'player');
+        document.getElementById('buy-archer').onclick = () => spawnUnit('archer', 'player');
+        document.getElementById('buy-giant').onclick = () => spawnUnit('giant', 'player');
+        
+        document.getElementById('upg-dmg').onclick = () => { if(gold>=400){gold-=400; upgradeLevel.dmg+=0.25; spawnParticle("CÔNG++", playerBase.x, playerBase.y, 'purple');} };
+        document.getElementById('upg-hp').onclick = () => { if(gold>=500){gold-=500; upgradeLevel.hp+=0.3; spawnParticle("MÁU++", playerBase.x, playerBase.y, 'green');} };
+        document.getElementById('upg-mine').onclick = () => { if(gold>=400){gold-=400; upgradeLevel.mine+=0.6; spawnParticle("VÀNG++", playerBase.x, playerBase.y, 'yellow');} };
+        
+        document.getElementById('use-skill').onclick = () => {
+            if(skillCooldown <= 0) {
+                skillCooldown = 800;
+                for(let i=0; i<30; i++) {
+                    setTimeout(() => {
+                        let rx = enemyBase.x - Math.random()*700;
+                        arrows.push({x: rx-300, y: 0, tx: rx, ty: groundY, dmg: 120, side: 'player'});
+                    }, i * 60);
+                }
+            }
+        };
+    </script>
+</body>
+</html>
