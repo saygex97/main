@@ -37,7 +37,6 @@
             z-index: 0;
         }
 
-        /* Container chính kiểu MIUI */
         .miui-container {
             position: relative;
             z-index: 1;
@@ -48,7 +47,7 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 40px; /* Góc bo tròn lớn đặc trưng MIUI */
+            border-radius: 40px;
             text-align: center;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
             animation: slideUp 0.8s ease-out;
@@ -59,7 +58,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Icon bảo trì kiểu đơn giản */
+        /* Biểu tượng rẽ hướng/bảo trì */
         .icon-box {
             width: 80px;
             height: 80px;
@@ -70,6 +69,9 @@
             justify-content: center;
             align-items: center;
             box-shadow: 0 10px 20px rgba(0, 251, 255, 0.3);
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .icon-box svg {
@@ -77,54 +79,20 @@
             fill: white;
         }
 
-        h1 {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #fff;
-        }
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: 15px; }
+        p { font-size: 15px; color: rgba(255, 255, 255, 0.6); line-height: 1.6; margin-bottom: 30px; }
 
-        p {
-            font-size: 15px;
-            color: rgba(255, 255, 255, 0.6);
-            line-height: 1.6;
-            margin-bottom: 30px;
-            padding: 0 20px;
-        }
-
-        /* Nút bấm kiểu MIUI */
         .miui-btn {
             background: #fff;
             color: #000;
-            border: none;
             padding: 14px 40px;
             font-size: 16px;
             font-weight: 600;
             border-radius: 30px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
             display: inline-block;
-        }
-
-        .miui-btn:hover {
-            transform: scale(1.05);
-            background: var(--miui-cyan);
-            box-shadow: 0 5px 15px rgba(0, 251, 255, 0.4);
-        }
-
-        .miui-btn:active {
-            transform: scale(0.95);
-        }
-
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #ffcc00;
-            border-radius: 50%;
-            margin-right: 8px;
-            box-shadow: 0 0 10px #ffcc00;
+            transition: 0.3s;
         }
     </style>
 </head>
@@ -133,34 +101,68 @@
     <canvas id="plexus"></canvas>
 
     <div class="miui-container">
-        <div class="icon-box">
+        <div class="icon-box" id="easter-egg-trigger">
             <svg viewBox="0 0 24 24"><path d="M22,15V17H2V15H22M12,2L16,6H13V13.15L17.5,17.65L16.08,19.07L11,13.99V6H8L12,2Z" /></svg>
         </div>
         <h1>Đang bảo trì hệ thống</h1>
-        <p><span class="status-dot"></span>Chúng tôi đang cập nhật phiên bản mới để mang lại trải nghiệm mượt mà hơn như HyperOS. Vui lòng quay lại sau.</p>
-        
+        <p>Web đang được nâng cấp và sửa để tối ưu hóa trải nghiệm. Vui lòng quay lại sau.</p>
         <a href="index.html" class="miui-btn">Quay lại</a>
     </div>
 
     <script>
+        // --- CẤU HÌNH ---
+        const SECRET_LINK = "https://drive.google.com/file/d/13fjbkfSL_nFErw7nxzHa4cyj2_Lo9_iB/view?usp=drive_link"; // Đổi link của bạn tại đây
+
+        // --- EASTER EGG LOGIC ---
+        let tapCount = 0;
+        let lastTapTime = 0;
+        const trigger = document.getElementById('easter-egg-trigger');
+
+        // Hàm kích hoạt
+        const activateEasterEgg = () => {
+            if (navigator.vibrate) navigator.vibrate([50, 50, 50]); // Rung nhẹ báo hiệu
+            window.location.href = SECRET_LINK;
+        };
+
+        // Xử lý cho Mobile & Mouse Click
+        trigger.addEventListener('click', (e) => {
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - lastTapTime;
+
+            if (timeDiff < 500 && timeDiff > 0) {
+                tapCount++;
+            } else {
+                tapCount = 1;
+            }
+
+            lastTapTime = currentTime;
+
+            if (tapCount >= 5) {
+                activateEasterEgg();
+                tapCount = 0; // Reset
+            }
+        });
+
+        // Xử lý phím 'H' + 'A' cho Desktop
+        let keysPressed = {};
+        window.addEventListener('keydown', (e) => {
+            keysPressed[e.key.toLowerCase()] = true;
+            if (keysPressed['h'] && keysPressed['a']) activateEasterEgg();
+        });
+        window.addEventListener('keyup', (e) => {
+            delete keysPressed[e.key.toLowerCase()];
+        });
+
+        // --- HIỆU ỨNG PLEXUS (Hạt Xanh-Đen, Chạm biến mất) ---
         const canvas = document.getElementById('plexus');
         const ctx = canvas.getContext('2d');
-
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
-
         let particles = [];
-        const particleCount = 120; 
-        const maxDistance = 140;
-        const touchRadius = 60; // Khoảng cách hạt biến mất
-
         let mouse = { x: null, y: null };
 
         class Particle {
-            constructor() {
-                this.init();
-            }
-
+            constructor() { this.init(); }
             init() {
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
@@ -168,87 +170,47 @@
                 this.vy = (Math.random() - 0.5) * 0.8;
                 this.size = Math.random() * 2 + 1;
             }
-
             update() {
-                this.x += this.vx;
-                this.y += this.vy;
-
+                this.x += this.vx; this.y += this.vy;
                 if (this.x < 0 || this.x > width) this.vx *= -1;
                 if (this.y < 0 || this.y > height) this.vy *= -1;
-
-                // Cơ chế chạm vào biến mất (hồi sinh chỗ khác)
-                if (mouse.x !== null && mouse.y !== null) {
-                    let dx = this.x - mouse.x;
-                    let dy = this.y - mouse.y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < touchRadius) {
-                        this.init(); 
-                    }
-                }
+                if (mouse.x && Math.sqrt((this.x-mouse.x)**2 + (this.y-mouse.y)**2) < 60) this.init();
             }
-
             draw() {
                 ctx.fillStyle = '#00fbff';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
             }
         }
 
-        function initParticles() {
+        function init() {
             particles = [];
-            for (let i = 0; i < particleCount; i++) {
-                particles.push(new Particle());
-            }
-        }
-
-        function connectParticles() {
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    let dx = particles[i].x - particles[j].x;
-                    let dy = particles[i].y - particles[j].y;
-                    let dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < maxDistance) {
-                        let alpha = 1 - dist / maxDistance;
-                        ctx.strokeStyle = `rgba(0, 251, 255, ${alpha * 0.3})`;
-                        ctx.lineWidth = 0.5;
-                        ctx.beginPath();
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.stroke();
-                    }
-                }
-            }
+            for (let i = 0; i < 120; i++) particles.push(new Particle());
         }
 
         function animate() {
             ctx.clearRect(0, 0, width, height);
-            particles.forEach(p => { 
-                p.update(); 
-                p.draw(); 
-            });
-            connectParticles();
+            particles.forEach(p => { p.update(); p.draw(); });
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    let d = Math.sqrt((particles[i].x-particles[j].x)**2 + (particles[i].y-particles[j].y)**2);
+                    if (d < 140) {
+                        ctx.strokeStyle = `rgba(0, 251, 255, ${(1 - d/140) * 0.2})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke();
+                    }
+                }
+            }
             requestAnimationFrame(animate);
         }
 
-        window.addEventListener('resize', () => {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            initParticles();
-        });
+        window.addEventListener('resize', () => { width=canvas.width=window.innerWidth; height=canvas.height=window.innerHeight; init(); });
+        const setMouse = (e) => { mouse.x = e.clientX || (e.touches && e.touches[0].clientX); mouse.y = e.clientY || (e.touches && e.touches[0].clientY); };
+        window.addEventListener('mousemove', setMouse);
+        window.addEventListener('touchstart', setMouse);
+        window.addEventListener('touchend', () => mouse = {x:null, y:null});
 
-        const handleMove = (e) => {
-            mouse.x = e.clientX || (e.touches && e.touches[0].clientX);
-            mouse.y = e.clientY || (e.touches && e.touches[0].clientY);
-        };
-
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('touchstart', handleMove);
-        window.addEventListener('touchend', () => { mouse.x = null; mouse.y = null; });
-
-        initParticles();
-        animate();
+        init(); animate();
     </script>
 </body>
 </html>
