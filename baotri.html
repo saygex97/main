@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống đang bảo trì - MIUI Style</title>
+    <style>
+        :root {
+            --miui-blue: #007aff;
+            --miui-cyan: #00fbff;
+            --bg-dark: #050505;
+            --card-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            background-color: var(--bg-dark);
+            color: white;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        /* Container chính kiểu MIUI */
+        .miui-container {
+            position: relative;
+            z-index: 1;
+            width: 90%;
+            max-width: 450px;
+            padding: 40px 20px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px; /* Góc bo tròn lớn đặc trưng MIUI */
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Icon bảo trì kiểu đơn giản */
+        .icon-box {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #00fbff, #007aff);
+            border-radius: 22px;
+            margin: 0 auto 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 20px rgba(0, 251, 255, 0.3);
+        }
+
+        .icon-box svg {
+            width: 40px;
+            fill: white;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        p {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        /* Nút bấm kiểu MIUI */
+        .miui-btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 14px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .miui-btn:hover {
+            transform: scale(1.05);
+            background: var(--miui-cyan);
+            box-shadow: 0 5px 15px rgba(0, 251, 255, 0.4);
+        }
+
+        .miui-btn:active {
+            transform: scale(0.95);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ffcc00;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 10px #ffcc00;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="plexus"></canvas>
+
+    <div class="miui-container">
+        <div class="icon-box">
+            <svg viewBox="0 0 24 24"><path d="M22,15V17H2V15H22M12,2L16,6H13V13.15L17.5,17.65L16.08,19.07L11,13.99V6H8L12,2Z" /></svg>
+        </div>
+        <h1>Đang bảo trì hệ thống</h1>
+        <p><span class="status-dot"></span>Chúng tôi đang cập nhật phiên bản mới để mang lại trải nghiệm mượt mà hơn như HyperOS. Vui lòng quay lại sau.</p>
+        
+        <a href="index.html" class="miui-btn">Quay lại</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('plexus');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        let particles = [];
+        const particleCount = 120; 
+        const maxDistance = 140;
+        const touchRadius = 60; // Khoảng cách hạt biến mất
+
+        let mouse = { x: null, y: null };
+
+        class Particle {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.size = Math.random() * 2 + 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+
+                // Cơ chế chạm vào biến mất (hồi sinh chỗ khác)
+                if (mouse.x !== null && mouse.y !== null) {
+                    let dx = this.x - mouse.x;
+                    let dy = this.y - mouse.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < touchRadius) {
+                        this.init(); 
+                    }
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = '#00fbff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function connectParticles() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    let dx = particles[i].x - particles[j].x;
+                    let dy = particles[i].y - particles[j].y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < maxDistance) {
+                        let alpha = 1 - dist / maxDistance;
+                        ctx.strokeStyle = `rgba(0, 251, 255, ${alpha * 0.3})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => { 
+                p.update(); 
+                p.draw(); 
+            });
+            connectParticles();
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        const handleMove = (e) => {
+            mouse.x = e.clientX || (e.touches && e.touches[0].clientX);
+            mouse.y = e.clientY || (e.touches && e.touches[0].clientY);
+        };
+
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchstart', handleMove);
+        window.addEventListener('touchend', () => { mouse.x = null; mouse.y = null; });
+
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>
