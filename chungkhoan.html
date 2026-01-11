@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iOS 26 FinTech - Pro Max</title>
+    <style>
+        :root {
+            --bg: #000;
+            --card: rgba(30, 30, 32, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --green: #32d74b;
+            --red: #ff453a;
+            --blue: #0a84ff;
+            --text: #fff;
+            --text-dim: #8e8e93;
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: -apple-system, sans-serif; overflow: hidden; height: 100vh;
+        }
+
+        /* Ambient background */
+        .glow {
+            position: fixed; width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(10, 132, 255, 0.15) 0%, transparent 70%);
+            top: -150px; right: -100px; z-index: -1;
+        }
+
+        header {
+            padding: 25px 20px 15px; background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+        }
+
+        .balance-group { display: flex; justify-content: space-between; align-items: flex-end; }
+        .main-balance { font-size: 38px; font-weight: 800; letter-spacing: -1px; }
+        .cash-label { font-size: 13px; color: var(--text-dim); text-transform: uppercase; }
+        .cash-val { font-size: 18px; font-weight: 600; color: var(--green); }
+
+        /* Speed Control */
+        .speed-control {
+            margin-top: 15px; display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 12px;
+        }
+        input[type=range] { flex: 1; accent-color: var(--blue); }
+
+        /* Market List */
+        .market-container {
+            height: calc(100vh - 200px); overflow-y: auto; padding: 15px;
+            padding-bottom: 100px;
+        }
+
+        .asset-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 16px; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            backdrop-filter: blur(10px); transition: 0.2s;
+        }
+        .asset-card:active { transform: scale(0.97); background: rgba(255,255,255,0.1); }
+
+        .asset-info { display: flex; flex-direction: column; }
+        .symbol { font-size: 18px; font-weight: 700; }
+        .name { font-size: 12px; color: var(--text-dim); }
+
+        .asset-stats { text-align: right; }
+        .price { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .change { font-size: 12px; font-weight: 700; padding: 2px 6px; border-radius: 5px; margin-top: 4px; display: inline-block; }
+
+        /* Trading View Overlay */
+        .overlay {
+            position: fixed; inset: 0; background: #000; z-index: 100;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
+        }
+        .overlay.active { transform: translateY(0); }
+
+        .nav { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-close { font-size: 24px; background: none; border: none; color: #fff; cursor: pointer; }
+
+        .chart-box { flex: 1; min-height: 250px; position: relative; padding: 10px; }
+        canvas { width: 100%; height: 100%; }
+
+        .trade-actions {
+            background: var(--card); padding: 30px 20px; border-radius: 30px 30px 0 0;
+            border-top: 1px solid var(--border);
+        }
+        .holding-tag { text-align: center; margin-bottom: 20px; font-size: 15px; color: var(--text-dim); }
+        .holding-tag b { color: #fff; font-size: 18px; }
+
+        .grid-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn {
+            border: none; padding: 20px; border-radius: 18px; font-size: 18px;
+            font-weight: 700; color: #fff; cursor: pointer; transition: 0.1s;
+        }
+        .btn:active { transform: scale(0.95); opacity: 0.8; }
+        .btn-buy { background: var(--green); }
+        .btn-sell { background: var(--red); }
+
+        /* News Ticker */
+        .news-bar {
+            position: fixed; bottom: 0; width: 100%; height: 35px;
+            background: #111; border-top: 1px solid var(--border);
+            display: flex; align-items: center; overflow: hidden;
+        }
+        .news-title { background: var(--red); font-size: 10px; font-weight: 900; padding: 0 10px; height: 100%; display: flex; align-items: center; z-index: 2; }
+        .news-track { white-space: nowrap; animation: scroll 20s linear infinite; padding-left: 100%; color: var(--text-dim); font-size: 13px; }
+        @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-150%); } }
+
+        .toast {
+            position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.95); color: #000; padding: 12px 25px;
+            border-radius: 25px; font-weight: 600; opacity: 0; transition: 0.3s; pointer-events: none; z-index: 200;
+        }
+
+        .up { color: var(--green); }
+        .down { color: var(--red); }
+        .bg-up { background: rgba(50, 215, 75, 0.15); color: var(--green); }
+        .bg-down { background: rgba(255, 69, 58, 0.15); color: var(--red); }
+    </style>
+</head>
+<body>
+
+<div class="glow"></div>
+<div class="toast" id="toast">Giao dịch thành công</div>
+
+<header>
+    <div class="cash-label">Số dư tiền mặt</div>
+    <div class="balance-group">
+        <div class="cash-val" id="cashDisplay">$10,000.00</div>
+        <div style="text-align: right">
+            <div class="cash-label">Tổng tài sản (Equity)</div>
+            <div class="main-balance" id="equityDisplay">$10,000.00</div>
+        </div>
+    </div>
+    
+    <div class="speed-control">
+        <span style="font-size: 12px;">Tốc độ thị trường:</span>
+        <input type="range" id="speedRange" min="100" max="2000" step="100" value="1000" onchange="updateTickRate()">
+        <span id="speedVal" style="font-size: 12px; width: 30px;">1.0s</span>
+    </div>
+</header>
+
+<div class="market-container" id="market"></div>
+
+<div class="overlay" id="tradingPanel">
+    <div class="nav">
+        <button class="btn-close" onclick="closeTrade()">✕</button>
+        <div style="text-align:center">
+            <div id="t-name" style="font-weight:700">APPLE INC</div>
+            <div id="t-symbol" style="font-size:12px; color:var(--text-dim)">AAPL</div>
+        </div>
+        <div style="width:24px"></div>
+    </div>
+
+    <div class="chart-box">
+        <div style="position:absolute; top:10px; left:20px;">
+            <div id="t-price" style="font-size:32px; font-weight:800;">$0.00</div>
+            <div id="t-change" class="change">0.00%</div>
+        </div>
+        <canvas id="chart"></canvas>
+    </div>
+
+    <div class="trade-actions">
+        <div class="holding-tag">Đang sở hữu: <b id="t-owned">0</b></div>
+        <div class="grid-btns">
+            <button class="btn btn-sell" onclick="execute('sell')">BÁN $500</button>
+            <button class="btn btn-buy" onclick="execute('buy')">MUA $500</button>
+        </div>
+    </div>
+</div>
+
+<div class="news-bar">
+    <div class="news-title">BREAKING NEWS</div>
+    <div class="news-track" id="newsTrack">Thị trường crypto đang bùng nổ mạnh mẽ... Fed quyết định giữ nguyên lãi suất... Cổ phiếu công nghệ dẫn đầu đà tăng trưởng...</div>
+</div>
+
+<script>
+    // --- DATA ---
+    let cash = 10000;
+    let tickRate = 1000;
+    let gameInterval;
+    let selectedIdx = null;
+
+    const assets = [
+        { id: 0, sym: 'BTC', name: 'Bitcoin', price: 65000, vol: 3.5, owned: 0, hist: [] },
+        { id: 1, sym: 'ETH', name: 'Ethereum', price: 3500, vol: 4.2, owned: 0, hist: [] },
+        { id: 2, sym: 'AAPL', name: 'Apple Inc.', price: 190, vol: 1.2, owned: 0, hist: [] },
+        { id: 3, sym: 'TSLA', name: 'Tesla', price: 250, vol: 5.0, owned: 0, hist: [] },
+        { id: 4, sym: 'NVDA', name: 'Nvidia', price: 450, vol: 4.5, owned: 0, hist: [] },
+        { id: 5, sym: 'VFS', name: 'VinFast Auto', price: 5.5, vol: 8.0, owned: 0, hist: [] },
+        { id: 6, sym: 'GOLD', name: 'Vàng Thế Giới', price: 2300, vol: 0.5, owned: 0, hist: [] },
+        { id: 7, sym: 'DOGE', name: 'Dogecoin', price: 0.15, vol: 12.0, owned: 0, hist: [] },
+        { id: 8, sym: 'META', name: 'Meta Platforms', price: 300, vol: 2.5, owned: 0, hist: [] },
+        { id: 9, sym: 'GOOGL', name: 'Alphabet Inc.', price: 140, vol: 1.8, owned: 0, hist: [] },
+        { id: 10, sym: 'SOL', name: 'Solana', price: 110, vol: 6.5, owned: 0, hist: [] }
+    ];
+
+    // --- INIT ---
+    assets.forEach(a => {
+        for(let i=0; i<40; i++) a.hist.push(a.price);
+    });
+
+    function updateTickRate() {
+        const val = document.getElementById('speedRange').value;
+        tickRate = val;
+        document.getElementById('speedVal').innerText = (val/1000).toFixed(1) + 's';
+        clearInterval(gameInterval);
+        gameInterval = setInterval(tick, tickRate);
+    }
+
+    function tick() {
+        assets.forEach(a => {
+            const change = (Math.random() - 0.5) * a.vol;
+            a.price += a.price * (change/100);
+            if(a.price < 0.01) a.price = 0.01;
+            a.hist.push(a.price);
+            if(a.hist.length > 40) a.hist.shift();
+        });
+        renderMarket();
+        updateEquity();
+        if(selectedIdx !== null) {
+            updateTradeUI();
+            drawChart();
+        }
+    }
+
+    function renderMarket() {
+        const container = document.getElementById('market');
+        let html = '';
+        assets.forEach((a, i) => {
+            const change = ((a.price - a.hist[0])/a.hist[0]*100).toFixed(2);
+            const isUp = change >= 0;
+            html += `
+                <div class="asset-card" onclick="openTrade(${i})">
+                    <div class="asset-info">
+                        <span class="symbol">${a.sym}</span>
+                        <span class="name">${a.name}</span>
+                    </div>
+                    <div class="asset-stats">
+                        <div class="price ${isUp?'up':'down'}">$${a.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        <div class="change ${isUp?'bg-up':'bg-down'}">${isUp?'+':''}${change}%</div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function updateEquity() {
+        let assetValue = 0;
+        assets.forEach(a => assetValue += a.owned * a.price);
+        const equity = cash + assetValue;
+        document.getElementById('cashDisplay').innerText = '$' + cash.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('equityDisplay').innerText = '$' + equity.toLocaleString(undefined, {minimumFractionDigits: 2});
+    }
+
+    // --- TRADE LOGIC ---
+    function openTrade(i) {
+        selectedIdx = i;
+        document.getElementById('tradingPanel').classList.add('active');
+        resizeCanvas();
+        updateTradeUI();
+        drawChart();
+    }
+
+    function closeTrade() {
+        selectedIdx = null;
+        document.getElementById('tradingPanel').classList.remove('active');
+    }
+
+    function updateTradeUI() {
+        const a = assets[selectedIdx];
+        document.getElementById('t-name').innerText = a.name;
+        document.getElementById('t-symbol').innerText = a.sym;
+        document.getElementById('t-price').innerText = '$' + a.price.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('t-owned').innerText = a.owned.toFixed(4);
+        
+        const change = ((a.price - a.hist[0])/a.hist[0]*100).toFixed(2);
+        const el = document.getElementById('t-change');
+        el.innerText = (change >= 0 ? '+' : '') + change + '%';
+        el.className = 'change ' + (change >= 0 ? 'bg-up' : 'bg-down');
+    }
+
+    function execute(type) {
+        const a = assets[selectedIdx];
+        const tradeAmount = 500; // Cố định mỗi lần trade 500 đô
+
+        if(type === 'buy') {
+            if(cash >= tradeAmount) {
+                cash -= tradeAmount;
+                a.owned += tradeAmount / a.price;
+                toast("Đã khớp lệnh MUA $500");
+            } else {
+                toast("Không đủ tiền mặt!");
+            }
+        } else {
+            const currentVal = a.owned * a.price;
+            if(currentVal >= 1) { // Có ít nhất 1 đô tài sản
+                let sellVal = Math.min(tradeAmount, currentVal);
+                let sellQty = sellVal / a.price;
+                a.owned -= sellQty;
+                cash += sellVal;
+                toast(`Đã khớp lệnh BÁN $${sellVal.toFixed(2)}`);
+            } else {
+                toast("Bạn không có tài sản này!");
+            }
+        }
+        updateEquity();
+        updateTradeUI();
+    }
+
+    // --- CHART ENGINE ---
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        canvas.width = canvas.offsetWidth * 2;
+        canvas.height = canvas.offsetHeight * 2;
+        ctx.scale(2, 2);
+    }
+
+    function drawChart() {
+        const a = assets[selectedIdx];
+        const w = canvas.width / 2;
+        const h = canvas.height / 2;
+        ctx.clearRect(0,0,w,h);
+
+        const min = Math.min(...a.hist) * 0.99;
+        const max = Math.max(...a.hist) * 1.01;
+        const isUp = a.price >= a.hist[0];
+        const color = isUp ? '#32d74b' : '#ff453a';
+
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        
+        const step = w / (a.hist.length - 1);
+        a.hist.forEach((p, i) => {
+            const x = i * step;
+            const y = h - ((p - min) / (max - min)) * h;
+            if(i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Area gradient
+        ctx.lineTo(w, h); ctx.lineTo(0, h);
+        const grad = ctx.createLinearGradient(0,0,0,h);
+        grad.addColorStop(0, isUp ? 'rgba(50,215,75,0.2)' : 'rgba(255,69,58,0.2)');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fill();
+    }
+
+    function toast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.style.opacity = 1;
+        setTimeout(() => t.style.opacity = 0, 1500);
+    }
+
+    // Start
+    gameInterval = setInterval(tick, tickRate);
+    tick();
+
+</script>
+</body>
+</html>
