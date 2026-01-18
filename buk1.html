@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Buckshot - Balanced Chaos</title>
+    <style>
+        :root {
+            --neon-cyan: #00f2ff;
+            --neon-red: #ff3c00;
+            --terminal-green: #00ff41;
+            --panel-bg: rgba(10, 10, 12, 0.98);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            height: 100dvh;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .texture-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 999; opacity: 0.12;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        #game-stage {
+            width: 100%; height: 100%;
+            position: relative; transform-style: preserve-3d;
+            background: radial-gradient(circle at center, #1a1b26 0%, #000 100%);
+        }
+
+        .table-surface {
+            position: absolute; width: 250%; height: 120%;
+            top: 60%; left: -75%;
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), #151515;
+            transform: rotateX(75deg);
+            border-top: 1px solid #333;
+        }
+
+        /* LOG TERMINAL */
+        #terminal-history {
+            position: absolute; top: 10px; right: 10px;
+            width: 240px; height: 160px;
+            background: var(--panel-bg); border-left: 3px solid var(--terminal-green);
+            padding: 10px; font-size: 11px; color: var(--terminal-green);
+            overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+            z-index: 200; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        .log-line { margin-bottom: 4px; animation: fadeInLog 0.2s ease; }
+        @keyframes fadeInLog { from { opacity: 0; transform: translateX(5px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* GUN */
+        .shotgun-container {
+            position: absolute; top: 45%; left: 50%;
+            transform: translate(-50%, -50%) rotateY(90deg);
+            transform-style: preserve-3d; width: 300px; height: 50px; z-index: 10;
+            transition: transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        .gun-body {
+            position: absolute; width: 100%; height: 100%;
+            background: #111; border: 1px solid #222;
+            clip-path: polygon(0 30%, 30% 30%, 40% 0, 100% 0, 100% 100%, 0 100%);
+        }
+        .gun-barrel { width: 65%; height: 18px; background: #222; margin-left: auto; border-radius: 0 4px 4px 0; }
+        .gun-barrel.sawed-off { width: 30%; border-right: 6px solid var(--neon-red); }
+
+        /* HUD */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 100; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 20px;
+        }
+        .hud-panel {
+            background: var(--panel-bg); border: 1px solid #333;
+            padding: 10px; width: 140px; pointer-events: auto;
+        }
+        .hp-unit { width: 12px; height: 22px; background: #222; margin-right: 4px; display: inline-block; transform: skewX(-15deg); transition: 0.3s; }
+        .hp-unit.active { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
+
+        #bullet-info-board {
+            background: rgba(0,0,0,0.9); border: 2px solid var(--neon-cyan);
+            padding: 20px 40px; color: var(--neon-cyan); font-weight: bold;
+            display: none; font-size: 22px; letter-spacing: 3px; z-index: 300;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.15);
+        }
+
+        /* CONTROLS */
+        .controls-box {
+            width: 100%; max-width: 440px; margin: 0 auto;
+            background: #0d0d0f; border: 1px solid #222;
+            padding: 15px; pointer-events: auto; z-index: 110;
+        }
+        .item-row { display: flex; gap: 8px; margin-bottom: 15px; justify-content: center; }
+        .btn-item {
+            width: 55px; height: 55px; background: #1a1a1c; border: 1px solid #333;
+            color: var(--neon-cyan); cursor: pointer; position: relative;
+            display: flex; align-items: center; justify-content: center; font-size: 22px;
+        }
+        .item-count {
+            position: absolute; top: -5px; right: -5px;
+            background: var(--neon-cyan); color: #000;
+            font-size: 10px; padding: 2px 5px; font-weight: 900;
+        }
+
+        .btn-main {
+            padding: 18px; border: none; font-weight: 900; text-transform: uppercase;
+            color: #fff; cursor: pointer; font-family: inherit; width: 100%;
+        }
+        .btn-blue { background: #16161d; border-bottom: 4px solid var(--neon-cyan); }
+        .btn-red { background: #1d1616; border-bottom: 4px solid var(--neon-red); }
+
+        #start-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="texture-overlay"></div>
+    <div id="game-stage">
+        <div class="table-surface"></div>
+        <div id="shotgun" class="shotgun-container">
+            <div class="gun-body">
+                <div style="width:35%; height:40px; background:#2a1a0a;"></div>
+                <div class="gun-barrel" id="barrel"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="terminal-history"></div>
+
+    <div id="start-screen">
+        <h1 style="color: var(--neon-red); margin-bottom: 25px; letter-spacing: 10px;">BUCKSHOT ROULETTE</h1>
+        <button style="padding: 15px 50px; background: none; border: 1px solid var(--neon-cyan); color: var(--neon-cyan); cursor: pointer; font-weight: bold;" onclick="startGame()">BẮT ĐẦU</button>
+    </div>
+
+    <div id="ui-layer">
+        <div class="hud-panel">
+            <div style="font-size: 9px; color: #777;">DEALER_OS</div>
+            <div id="d-hp"></div>
+        </div>
+
+        <div style="text-align: center; display: flex; justify-content: center; align-items: center;">
+            <div id="bullet-info-board"></div>
+            <div id="log-display" style="font-size: 24px; font-weight: bold; position: absolute;"></div>
+        </div>
+
+        <div>
+            <div class="hud-panel" style="margin-bottom: 10px; border-color: var(--neon-cyan)">
+                <div style="font-size: 9px; color: #777;">PLAYER_OS</div>
+                <div id="p-hp"></div>
+            </div>
+
+            <div class="controls-box" id="ctrl">
+                <div class="item-row">
+                    <button class="btn-item" id="btn-glass" onclick="game.use('glass')">🔍<span class="item-count" id="c-glass">0</span></button>
+                    <button class="btn-item" id="btn-saw" onclick="game.use('saw')">🪚<span class="item-count" id="c-saw">0</span></button>
+                    <button class="btn-item" id="btn-swap" onclick="game.use('swap')">🔄<span class="item-count" id="c-swap">0</span></button>
+                    <button class="btn-item" id="btn-smoke" onclick="game.use('smoke')">🚬<span class="item-count" id="c-smoke">0</span></button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="btn-main btn-blue" onclick="game.shoot('self')">BẮN MÌNH</button>
+                    <button class="btn-main btn-red" onclick="game.shoot('enemy')">BẮN ĐỐI THỦ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const $ = id => document.getElementById(id);
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+
+    function startGame() { $('start-screen').style.display = 'none'; game.init(); }
+
+    class Game {
+        constructor() {
+            this.state = { 
+                p: 4, d: 4, chamber: [], turn: 'player', 
+                items: { glass: 0, saw: 0, swap: 0, smoke: 0 }, 
+                dItems: { glass: 1, saw: 0, swap: 0, smoke: 1 },
+                saw: false, over: false 
+            };
+        }
+
+        addHistory(text, type = 'system') {
+            const h = $('terminal-history');
+            const l = document.createElement('div');
+            l.className = 'log-line';
+            l.innerText = (type==='player'?'> ':'$ ') + text.toUpperCase();
+            if(type==='dealer') l.style.color = 'var(--neon-red)';
+            if(type==='ammo') l.style.color = 'var(--neon-cyan)';
+            h.appendChild(l);
+            if(h.childNodes.length > 8) h.removeChild(h.firstChild);
+        }
+
+        async showBulletBoard(live, blank) {
+            const board = $('bullet-info-board');
+            board.innerHTML = `<span style="color:var(--neon-red)">${live} THẬT</span> | <span style="color:#777">${blank} GIẢ</span>`;
+            board.style.display = 'block';
+            this.addHistory(`NẠP: ${live} THẬT | ${blank} GIẢ`, 'ammo');
+            await delay(3000);
+            board.style.display = 'none';
+        }
+
+        async init() {
+            this.render();
+            this.addHistory("HỆ THỐNG ĐÃ KÍCH HOẠT");
+            this.load();
+        }
+
+        async load() {
+            if(this.state.over) return;
+            $('shotgun').style.transform = "translate(-50%, -50%) rotateY(90deg)";
+            await this.msg("NẠP ĐẠN...", 800);
+            
+            // LOGIC MỚI: Mỗi loại đạn từ 1 đến 5 viên
+            const live = Math.floor(Math.random() * 5) + 1; 
+            const blank = Math.floor(Math.random() * 5) + 1;
+            
+            this.state.chamber = Array(live).fill(true).concat(Array(blank).fill(false)).sort(() => Math.random() - 0.5);
+            
+            // Nhận 3 món đồ ngẫu nhiên (Giới hạn mỗi loại 2)
+            const keys = ['glass', 'saw', 'swap', 'smoke'];
+            for(let i=0; i<3; i++) {
+                const r = keys[Math.floor(Math.random() * keys.length)];
+                if(this.state.items[r] < 2) this.state.items[r]++;
+                if(this.state.dItems[r] < 2) this.state.dItems[r]++;
+            }
+
+            this.updateUI();
+            await this.showBulletBoard(live, blank);
+            this.turn();
+        }
+
+        turn() {
+            if(this.state.chamber.length === 0) return this.load();
+            this.state.saw = false;
+            $('barrel').classList.remove('sawed-off');
+            $('shotgun').style.transform = "translate(-50%, -50%) rotateY(90deg)";
+
+            if(this.state.turn === 'player') {
+                this.msg("LƯỢT BẠN");
+                $('ctrl').style.opacity = "1";
+                $('ctrl').style.pointerEvents = "auto";
+            } else {
+                this.msg("LƯỢT DEALER");
+                $('ctrl').style.opacity = "0.5";
+                $('ctrl').style.pointerEvents = "none";
+                this.aiBrain();
+            }
+        }
+
+        async use(type, isDealer = false) {
+            let targetItems = isDealer ? this.state.dItems : this.state.items;
+            if(targetItems[type] <= 0) return;
+            targetItems[type]--;
+            this.updateUI();
+
+            if(type === 'glass') {
+                this.addHistory(`${isDealer?'DEALER':'BẠN'} SOI KÍNH LÚP`);
+                if(!isDealer) await this.msg(this.state.chamber[0] ? "ĐẠN THẬT" : "ĐẠN GIẢ", 1200, this.state.chamber[0]?'red':'cyan');
+                return this.state.chamber[0];
+            } else if(type === 'saw') {
+                this.state.saw = true;
+                $('barrel').classList.add('sawed-off');
+                this.addHistory(`${isDealer?'DEALER':'BẠN'} DÙNG CƯA`);
+                await this.msg("SÁT THƯƠNG X2", 1000);
+            } else if(type === 'swap') {
+                this.state.chamber[0] = !this.state.chamber[0];
+                this.addHistory(`${isDealer?'DEALER':'BẠN'} ĐẢO ĐẠN`);
+                await this.msg("ĐÃ HOÁN ĐỔI", 1000, 'cyan');
+            } else if(type === 'smoke') {
+                if(isDealer) this.state.d = Math.min(4, this.state.d + 1);
+                else this.state.p = Math.min(4, this.state.p + 1);
+                this.addHistory(`${isDealer?'DEALER':'BẠN'} HÚT THUỐC`);
+                this.render();
+                await this.msg("+1 HP", 1000);
+            }
+        }
+
+        async aiBrain() {
+            await delay(1500);
+            let known = null;
+            if(this.state.d < 3 && this.state.dItems.smoke > 0) await this.use('smoke', true);
+            
+            if(this.state.dItems.glass > 0 && Math.random() > 0.4) {
+                known = await this.use('glass', true);
+                await delay(800);
+            }
+
+            if(known === true) {
+                if(this.state.dItems.saw > 0) await this.use('saw', true);
+                this.shoot('enemy');
+            } else if(known === false) {
+                if(this.state.dItems.swap > 0) { await this.use('swap', true); this.shoot('enemy'); }
+                else this.shoot('self');
+            } else {
+                const prob = this.state.chamber.filter(x=>x).length / this.state.chamber.length;
+                if(prob >= 0.5) this.shoot('enemy');
+                else this.shoot('self');
+            }
+        }
+
+        async shoot(target) {
+            const isLive = this.state.chamber.shift();
+            $('ctrl').style.pointerEvents = "none";
+            
+            $('shotgun').style.transform = target === 'self' 
+                ? "translate(-50%, 0%) rotateY(180deg) rotateZ(5deg)"
+                : "translate(-50%, -80%) rotateY(0deg) rotateZ(-5deg)";
+
+            await delay(800);
+            
+            if(isLive) {
+                const dmg = this.state.saw ? 2 : 1;
+                this.addHistory(`KHAI HỎA: ĐẠN THẬT`, 'dealer');
+                this.msg("ĐOÀNG!", 800, 'red');
+                document.body.style.background = "#300";
+                setTimeout(()=>document.body.style.background="#000", 100);
+                if(target === 'self') {
+                    if(this.state.turn === 'player') this.state.p -= dmg;
+                    else this.state.d -= dmg;
+                } else {
+                    if(this.state.turn === 'player') this.state.d -= dmg;
+                    else this.state.p -= dmg;
+                }
+            } else {
+                this.addHistory("KHAI HỎA: ĐẠN GIẢ");
+                this.msg("*CẠCH*", 800, 'cyan');
+            }
+
+            this.render();
+            if(this.checkWin()) return;
+
+            await delay(1000);
+            if(!(target === 'self' && !isLive)) this.state.turn = this.state.turn === 'player' ? 'dealer' : 'player';
+            this.turn();
+        }
+
+        updateUI() {
+            ['glass', 'saw', 'swap', 'smoke'].forEach(k => {
+                $(`c-${k}`).innerText = this.state.items[k];
+                $(`btn-${k}`).disabled = this.state.items[k] <= 0;
+            });
+        }
+
+        render() {
+            const draw = (id, v) => { $(id).innerHTML = ''; for(let i=0; i<4; i++) { const u = document.createElement('div'); u.className = 'hp-unit' + (i<v?' active':''); $(id).appendChild(u); } }
+            draw('p-hp', this.state.p); draw('d-hp', this.state.d);
+        }
+
+        checkWin() {
+            if(this.state.p <= 0 || this.state.d <= 0) {
+                this.state.over = true;
+                $('start-screen').style.display = 'flex';
+                $('start-screen').innerHTML = `<h1 style="color:red">${this.state.p<=0?'HẾT LƯỢT':'CHIẾN THẮNG'}</h1><button style="margin-top:30px; padding:15px 30px; border:1px solid var(--neon-cyan); background:none; color:cyan;" onclick="location.reload()">CHƠI LẠI</button>`;
+                return true;
+            }
+            return false;
+        }
+
+        msg(t, d=0, c='white') {
+            return new Promise(r => {
+                $('log-display').innerText = t;
+                $('log-display').style.color = c==='red'?'var(--neon-red)':(c==='cyan'?'var(--neon-cyan)':'white');
+                if(d>0) setTimeout(()=>{ $('log-display').innerText=''; r(); }, d);
+                else r();
+            });
+        }
+    }
+    const game = new Game();
+</script>
+</body>
+</html>
